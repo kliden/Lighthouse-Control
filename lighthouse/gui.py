@@ -1,4 +1,4 @@
-import platform, asyncio, sys, pathlib
+import platform, asyncio, sys, pathlib, bisect
 
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
@@ -164,6 +164,10 @@ class LighthouseView(QFrame):
 
         view_layout.addWidget(toggle_power_button, alignment=Qt.AlignmentFlag.AlignRight)
 
+    @property
+    def address(self):
+        return self._lh.address
+
     def mousePressEvent(self, e: QMouseEvent):
         self.select(not self._is_selected)
         return super().mousePressEvent(e)
@@ -218,10 +222,13 @@ class LighthouseListView(QGroupBox):
         self._list_layout.setContentsMargins(0, 0, 0, 0)
 
         self.views = []
+        self.addresses = []
 
     def addLighthouseView(self, lh_view):
-        self._list_layout.addWidget(lh_view)
-        self.views.append(lh_view)
+        index = bisect.bisect(self.addresses, lh_view.address)
+        self.views.insert(index, lh_view)
+        self.addresses.insert(index, lh_view.address)
+        self._list_layout.insertWidget(index, lh_view)
 
 
 class Window(QMainWindow):
