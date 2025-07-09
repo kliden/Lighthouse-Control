@@ -4,11 +4,13 @@ main.run([
     'lighthouse/lighthouse.py',
     '--onefile',
     '--name=lighthouse',
-    '--noconsole'
+    '--noconsole',
+    '--icon=icons/lighthouse_on.ico'
 ])
 
 main.run([
     'lighthouse/lighthouse.py',
     '--onefile',
-    '--name=lighthouse_console'
+    '--name=lighthouse_console',
+    '--icon=icons/lighthouse_off.ico'
 ])
