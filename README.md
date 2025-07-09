@@ -31,7 +31,7 @@ It looks like this:
 
 ![Screenshot of GUI](readme/gui_screenshot.png)
 
-If someone else has lighthouses close enough to be detected then you need to figure out which of the listed MAC addresses are your lighthouses and which are theirs. To do this, click "Turn On"/"Turn Off" button for each light house one at a time, then wait to see if one of yours turns on/off.
+If someone else has lighthouses close enough to be detected then you need to figure out which of the listed MAC addresses are your lighthouses and which are theirs. To do this, click the "Turn On"/"Turn Off" button for each light house one at a time, then wait to see if one of yours turns on/off.
 
 ### Command Line
 To use the [Release](https://github.com/kliden/Lighthouse-Control/releases/latest) .exe files, replace `python lighthouse.py` with `lighthouse_console.exe` in the following commands.
