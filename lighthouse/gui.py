@@ -77,14 +77,18 @@ class LighthouseSetModel(QObject):
 
     def __init__(self, lighthouses=set()):
         super().__init__()
-        self.lighthouses = lighthouses
+        self._lighthouses = lighthouses
+
+    @property
+    def lighthouses(self):
+        return set(self._lighthouses)
 
     def __len__(self):
-        return len(self.lighthouses)
+        return len(self._lighthouses)
 
     def add(self, lh: QtLighthouse):
-        if lh not in self.lighthouses:
-            self.lighthouses.add(lh)
+        if lh not in self._lighthouses:
+            self._lighthouses.add(lh)
             self.lighthouseAdded.emit(lh)
 
 
@@ -111,7 +115,7 @@ class AllPowerButton(WorkButton):
         self._is_on = is_on  
 
     async def _work(self):
-        lighthouses = set(self._lighthouse_model.lighthouses)
+        lighthouses = set(self._lighthouse_model._lighthouses)
         async with asyncio.TaskGroup() as tg:
             for lh in lighthouses:
                 tg.create_task(lh.write(self._is_on))
@@ -155,8 +159,8 @@ class LighthouseView(QFrame):
         view_layout.addWidget(self._power_state_label)
         self._power_state_label.setStyleSheet(self._update_power_indicator(None))
 
-        self.address_label = QLabel(lh.address)
-        view_layout.addWidget(self.address_label, alignment=Qt.AlignmentFlag.AlignLeft)
+        self._address_label = QLabel(lh.address)
+        view_layout.addWidget(self._address_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
         def on_power_state_changed(is_on: bool):
             self._power_state_label.setStyleSheet(self._update_power_indicator(is_on))
@@ -196,7 +200,7 @@ class LighthouseView(QFrame):
             return
 
         self._is_selected = is_selected
-        self.address_label.setStyleSheet(f"color: {self.SELECTED_COLOR}" if is_selected else "")
+        self._address_label.setStyleSheet(f"color: {self.SELECTED_COLOR}" if is_selected else "")
         self.selectStateChanged.emit(self._is_selected)
     
 
@@ -221,13 +225,11 @@ class LighthouseListView(QGroupBox):
         self._list_layout.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
         self._list_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.views = []
-        self.addresses = []
+        self._addresses = []
 
     def addLighthouseView(self, lh_view):
-        index = bisect.bisect(self.addresses, lh_view.address)
-        self.views.insert(index, lh_view)
-        self.addresses.insert(index, lh_view.address)
+        index = bisect.bisect(self._addresses, lh_view.address)
+        self._addresses.insert(index, lh_view.address)
         self._list_layout.insertWidget(index, lh_view)
 
 
@@ -263,40 +265,40 @@ class Window(QMainWindow):
         upper_widget = QWidget()
         main_layout.addWidget(upper_widget)
         upper_layout = QVBoxLayout(upper_widget)
-        self.lighthouse_list_view = LighthouseListView()
-        upper_layout.addWidget(self.lighthouse_list_view)
+        self._lighthouse_list_view = LighthouseListView()
+        upper_layout.addWidget(self._lighthouse_list_view)
 
-        self.lighthouse_model = LighthouseSetModel()
-        self.lighthouse_model.lighthouseAdded.connect(self._on_lighthouse_added)
-        scanner.lighthouseDetected.connect(self.lighthouse_model.add)
+        self._lighthouse_model = LighthouseSetModel()
+        self._lighthouse_model.lighthouseAdded.connect(self._on_lighthouse_added)
+        scanner.lighthouseDetected.connect(self._lighthouse_model.add)
 
         control_button_holder = QWidget()
         main_layout.addWidget(control_button_holder)
         control_button_layout = QHBoxLayout(control_button_holder)
 
-        self.scan_button = QPushButton("Scan")
-        self.scan_button.setFixedWidth(100)
-        control_button_layout.addWidget(self.scan_button)
-        self.scan_button.pressed.connect(scanner.scanSlot)
-        scanner.started.connect(lambda: self.scan_button.setEnabled(False))
+        self._scan_button = QPushButton("Scan")
+        self._scan_button.setFixedWidth(100)
+        control_button_layout.addWidget(self._scan_button)
+        self._scan_button.pressed.connect(scanner.scanSlot)
+        scanner.started.connect(lambda: self._scan_button.setEnabled(False))
         scanner.stopped.connect(self._on_scanner_stopped)
 
-        self.on_button = AllPowerButton(self.lighthouse_model, is_on=True)
-        self.off_button = AllPowerButton(self.lighthouse_model, is_on=False)
+        self._on_button = AllPowerButton(self._lighthouse_model, is_on=True)
+        self._off_button = AllPowerButton(self._lighthouse_model, is_on=False)
 
-        self._global_power_buttons = [self.on_button, self.off_button]
+        self._global_power_buttons = [self._on_button, self._off_button]
         self._power_buttons = list(self._global_power_buttons)
 
         def set_power_buttons_enabled(is_enabled: bool):
             for b in self._power_buttons:
                 b.setEnabled(is_enabled)
-            self.scan_button.setEnabled(is_enabled)
+            self._scan_button.setEnabled(is_enabled)
         for b in self._global_power_buttons:
             b.pressed.connect(lambda: set_power_buttons_enabled(False))
             b.finished.connect(lambda: set_power_buttons_enabled(True))
 
-        control_button_layout.addWidget(self.on_button)
-        control_button_layout.addWidget(self.off_button)
+        control_button_layout.addWidget(self._on_button)
+        control_button_layout.addWidget(self._off_button)
 
         script_widget = QGroupBox("Quick Launcher Creation")
         main_layout.addWidget(script_widget)
@@ -322,18 +324,18 @@ class Window(QMainWindow):
             no_console_window_checkbox.checkStateChanged.connect(check_changed)
             script_layout.addWidget(no_console_window_checkbox)
 
-        self.create_selected_button = QPushButton("Create For Selected")
-        self.create_selected_button.setToolTip("Must have at least one lighthouse selected.")
-        self.create_selected_button.setEnabled(False)
+        self._create_selected_button = QPushButton("Create For Selected")
+        self._create_selected_button.setToolTip("Must have at least one lighthouse selected.")
+        self._create_selected_button.setEnabled(False)
         def selected_button_pressed():
             lighthouse.create_scripts(self._script_folder, self._selected_addresses, self._script_no_console_window)
-        self.create_selected_button.pressed.connect(selected_button_pressed)
-        script_layout.addWidget(self.create_selected_button)
+        self._create_selected_button.pressed.connect(selected_button_pressed)
+        script_layout.addWidget(self._create_selected_button)
 
         create_all_button = QPushButton("Create For All")
         script_layout.addWidget(create_all_button)
         def set_global_buttons_enabled():
-            all_addresses = [lh.address for lh in self.lighthouse_model.lighthouses]
+            all_addresses = [lh.address for lh in self._lighthouse_model._lighthouses]
             lighthouse.create_scripts(self._script_folder, all_addresses, self._script_no_console_window)
         create_all_button.pressed.connect(set_global_buttons_enabled)
 
@@ -349,14 +351,14 @@ class Window(QMainWindow):
         self._power_buttons.append(toggle_power_button)
 
         view = LighthouseView(lh, toggle_power_button)
-        self.lighthouse_list_view.addLighthouseView(view)
+        self._lighthouse_list_view.addLighthouseView(view)
         def on_select_state_changed(is_selected: bool):
             if is_selected:
                 if lh.address not in self._selected_addresses:
                     self._selected_addresses.append(lh.address)
             else:
                 self._selected_addresses.remove(lh.address)
-            self.create_selected_button.setEnabled(len(self._selected_addresses) > 0)
+            self._create_selected_button.setEnabled(len(self._selected_addresses) > 0)
         view.selectStateChanged.connect(on_select_state_changed) 
 
         await lh.init()
@@ -365,7 +367,7 @@ class Window(QMainWindow):
     async def _on_scanner_stopped(self):
         if self._is_setting_power_state:
             await self._power_finish_event.wait()
-        self.scan_button.setEnabled(True)
+        self._scan_button.setEnabled(True)
     
     def _init_power_button(self, button: WorkButton):
         button.pressed.connect(self.writingPowerState.emit)
@@ -375,7 +377,7 @@ class Window(QMainWindow):
             for b in self._global_power_buttons:
                 b.setEnabled(is_enabled)
             button.setEnabled(is_enabled)
-            self.scan_button.setEnabled(is_enabled)
+            self._scan_button.setEnabled(is_enabled)
         button.pressed.connect(lambda: set_buttons_enabled(False))
         button.finished.connect(lambda: set_buttons_enabled(True))
 
