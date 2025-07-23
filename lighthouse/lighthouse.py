@@ -19,7 +19,9 @@ class PowerState(Enum):
 
     # This state appears to be returned by a read of the v2 power handle (17) when a device has recently been
     # powered on and before its power state has been written. I don't know if the v1 lighthouses return this.
-    STARTUP = b'\x20'
+    STARTUP_1 = b'\x20'
+    # Same as above
+    STARTUP_2 = b'\xd1'
 
     def from_name(power_state_str: str, version: int=2):
         full_str = f"{"V1" if version == 1 else "V2"}_{power_state_str.upper()}"
@@ -32,7 +34,7 @@ class PowerState(Enum):
         for state in PowerState:
             if state.value == power_state_value:
                 return state
-        raise ValueError("Invalid PowerState.value ", power_state_value.hex())
+        return None
 
     def from_version(version: int):
         if version == 1:
@@ -49,7 +51,8 @@ class PowerState(Enum):
         return (
             self == PowerState.V1_ON or 
             self == PowerState.V2_ON or
-            self == PowerState.STARTUP)
+            self == PowerState.STARTUP_1 or
+            self == PowerState.STARTUP_2)
 
 
 class Lighthouse:
@@ -104,7 +107,7 @@ class Lighthouse:
                         async with BleakClient(self._device) as client:
                             read_bytes = await client.read_gatt_char(self._gatt_char)
                             read_power_state = PowerState.from_value(read_bytes)
-                            if read_power_state.is_on() == is_on:
+                            if read_power_state and read_power_state.is_on() == is_on:
                                 self._is_on = is_on
                                 return self
                             else:
@@ -117,8 +120,9 @@ class Lighthouse:
             for r in range(retries):
                 try:
                     async with BleakClient(self._device) as client:
-                        power_state = await client.read_gatt_char(self._gatt_char)
-                        self._is_on = PowerState.from_value(power_state).is_on()
+                        power_state_bytes = await client.read_gatt_char(self._gatt_char)
+                        power_state = PowerState.from_value(power_state_bytes)
+                        self._is_on = power_state is not None and power_state.is_on()
                         return self._is_on
                 except (BleakError, OSError) as e:
                     print(f"{self.address}: {e}. Retry ({r + 1}/{retries}).")
