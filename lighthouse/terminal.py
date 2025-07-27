@@ -20,17 +20,19 @@ async def main():
     try:
         try:
             print(f"Scanning for lighthouses for maximum of {str(lighthouse.SCAN_TIMEOUT)} seconds...")
+            if args.scan:
+                print("The MAC address of all detected lighthouses will be copied to clipboard.")
             async for lh in lighthouse.Lighthouse.iter(lighthouse.SCAN_TIMEOUT):
                 if lh not in lighthouses:
                     if args.scan or lh.address in args.addresses:
                         lighthouses.append(lh)
+                        if args.scan:
+                            pyperclip.copy(" ".join(l.address for l in lighthouses))
                     print(f"Found Name({lh.name}) - MAC({lh.address}) - RSSI({lh.rssi} dBm)")
                     if len(lighthouses) == len(args.addresses):
                         break
         except TimeoutError:
-            if args.scan:
-                pyperclip.copy(" ".join(l.address for l in lighthouses))
-                print("Lighthouse MAC addresses copied to clipboard")
+            pass
 
         if not args.scan:
             write_tasks = []
